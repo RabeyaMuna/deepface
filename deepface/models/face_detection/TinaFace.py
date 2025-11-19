@@ -9,16 +9,13 @@ import cv2
 # project dependencies
 from deepface.models.Detector import Detector, FacialAreaRegion
 from deepface.commons.logger import Logger
-from deepface.commons import weight_utils, folder_utils
+from deepface.commons import weight_utils
 from deepface.models.face_detection import OpenCv as OpenCvFD
 
 logger = Logger()
 
 
-WEIGHTS_URL = (
-    "https://drive.google.com/uc?"
-    "id=1VkMKWPJM0oaS8eyIVZ5flcJH70Pbi-_g"
-)
+WEIGHTS_URL = "https://drive.google.com/uc?id=1VkMKWPJM0oaS8eyIVZ5flcJH70Pbi-_g"
 WEIGHT_FILENAME = "tinaface_r50_fpn_bn.onnx"
 
 
@@ -51,9 +48,12 @@ class TinaFaceClient(Detector):
         # Try ONNX Runtime first for best compatibility with dynamic shapes
         try:
             import onnxruntime as ort  # type: ignore
-            providers = (['CUDAExecutionProvider', 'CPUExecutionProvider']
-                        if 'CUDAExecutionProvider' in ort.get_available_providers()
-                        else ['CPUExecutionProvider'])
+
+            providers = (
+                ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                if "CUDAExecutionProvider" in ort.get_available_providers()
+                else ["CPUExecutionProvider"]
+            )
         except ImportError as exc:
             raise ValueError(
                 "onnxruntime is required for TinaFace. Please install it with: "
@@ -79,21 +79,29 @@ class TinaFaceClient(Detector):
             ) from err
 
     @staticmethod
-    def _resize_keep_ratio_pad(img: np.ndarray,
-                               dst_h: int,
-                               dst_w: int,
-                               size_divisor: int,
-                               pad_value_bgr: List[float]) -> Dict[str, Any]:
+    def _resize_keep_ratio_pad(
+        img: np.ndarray,
+        dst_h: int,
+        dst_w: int,
+        size_divisor: int,
+        pad_value_bgr: List[float],
+    ) -> Dict[str, Any]:
         h, w = img.shape[:2]
         scale = min(dst_h / h, dst_w / w)
         new_w, new_h = int(round(w * scale)), int(round(h * scale))
-        resized = cv2.resize(img, (new_w, new_h)) if (new_w != w or new_h != h) else img.copy()
+        resized = (
+            cv2.resize(img, (new_w, new_h))
+            if (new_w != w or new_h != h)
+            else img.copy()
+        )
 
         # compute padded dims to be divisible by size_divisor
         pad_w = int((size_divisor - (new_w % size_divisor)) % size_divisor)
         pad_h = int((size_divisor - (new_h % size_divisor)) % size_divisor)
 
-        padded = np.full((new_h + pad_h, new_w + pad_w, 3), pad_value_bgr, dtype=resized.dtype)
+        padded = np.full(
+            (new_h + pad_h, new_w + pad_w, 3), pad_value_bgr, dtype=resized.dtype
+        )
         padded[:new_h, :new_w, :] = resized
 
         meta = {
@@ -138,11 +146,9 @@ class TinaFaceClient(Detector):
         return {"input": input_tensor, "meta": meta}
 
     @staticmethod
-    def _parse_out_rows(out: np.ndarray,
-                        score_threshold: float,
-                        orig_w: int,
-                        orig_h: int,
-                        scale: float) -> List[FacialAreaRegion]:
+    def _parse_out_rows(
+        out: np.ndarray, score_threshold: float, orig_w: int, orig_h: int, scale: float
+    ) -> List[FacialAreaRegion]:
         resp: List[FacialAreaRegion] = []
         if out.ndim != 2 or out.shape[1] < 5:
             return resp
@@ -165,8 +171,14 @@ class TinaFaceClient(Detector):
                     le_x, le_y = int(round(row[5] / scale)), int(round(row[6] / scale))
                     re_x, re_y = int(round(row[7] / scale)), int(round(row[8] / scale))
                     n_x, n_y = int(round(row[9] / scale)), int(round(row[10] / scale))
-                    ml_x, ml_y = int(round(row[11] / scale)), int(round(row[12] / scale))
-                    mr_x, mr_y = int(round(row[13] / scale)), int(round(row[14] / scale))
+                    ml_x, ml_y = (
+                        int(round(row[11] / scale)),
+                        int(round(row[12] / scale)),
+                    )
+                    mr_x, mr_y = (
+                        int(round(row[13] / scale)),
+                        int(round(row[14] / scale)),
+                    )
                     left_eye = (le_x, le_y)
                     right_eye = (re_x, re_y)
                     nose = (n_x, n_y)
@@ -196,7 +208,9 @@ class TinaFaceClient(Detector):
         return 1.0 / (1.0 + np.exp(-x))
 
     @staticmethod
-    def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float, top_k: int) -> List[int]:
+    def _nms(
+        boxes: np.ndarray, scores: np.ndarray, iou_thresh: float, top_k: int
+    ) -> List[int]:
         if boxes.size == 0:
             return []
         x1 = boxes[:, 0]
@@ -214,30 +228,26 @@ class TinaFaceClient(Detector):
             if suppressed[i_idx]:
                 continue
             keep.append(i)
-            xx1 = np.maximum(x1[i], x1[order[i_idx + 1:]])
-            yy1 = np.maximum(y1[i], y1[order[i_idx + 1:]])
-            xx2 = np.minimum(x2[i], x2[order[i_idx + 1:]])
-            yy2 = np.minimum(y2[i], y2[order[i_idx + 1:]])
+            xx1 = np.maximum(x1[i], x1[order[i_idx + 1 :]])
+            yy1 = np.maximum(y1[i], y1[order[i_idx + 1 :]])
+            xx2 = np.minimum(x2[i], x2[order[i_idx + 1 :]])
+            yy2 = np.minimum(y2[i], y2[order[i_idx + 1 :]])
             w = np.maximum(0.0, xx2 - xx1 + 1)
             h = np.maximum(0.0, yy2 - yy1 + 1)
             inter = w * h
-            ovr = inter / (areas[i] + areas[order[i_idx + 1:]] - inter)
-            suppressed[i_idx + 1:][ovr >= iou_thresh] = True
+            ovr = inter / (areas[i] + areas[order[i_idx + 1 :]] - inter)
+            suppressed[i_idx + 1 :][ovr >= iou_thresh] = True
         return keep
 
     @staticmethod
-    def _generate_level_anchors(stride: int,
-                                height: int,
-                                width: int,
-                                scales_per_octave: int,
-                                octave_base_scale: float,
-                                ratio: float
-                                ) -> Tuple[
-                                    np.ndarray,
-                                    np.ndarray,
-                                    np.ndarray,
-                                    np.ndarray
-                                ]:
+    def _generate_level_anchors(
+        stride: int,
+        height: int,
+        width: int,
+        scales_per_octave: int,
+        octave_base_scale: float,
+        ratio: float,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # Compute sizes: stride * (octave_base_scale * 2**(i/scales_per_octave))
         scale_factors = [
             octave_base_scale * (2 ** (i / scales_per_octave))
@@ -266,14 +276,16 @@ class TinaFaceClient(Detector):
         cy = centers_tiled[:, 1]
         return cx, cy, widths, heights
 
-    def _decode_fpn_outputs(self,
-                            outputs_map: Dict[str, np.ndarray],
-                            meta: Dict[str, Any],
-                            score_thr: float,
-                            nms_iou_thr: float,
-                            max_per_img: int,
-                            orig_w: int,
-                            orig_h: int) -> List[FacialAreaRegion]:
+    def _decode_fpn_outputs(
+        self,
+        outputs_map: Dict[str, np.ndarray],
+        meta: Dict[str, Any],
+        score_thr: float,
+        nms_iou_thr: float,
+        max_per_img: int,
+        orig_w: int,
+        orig_h: int,
+    ) -> List[FacialAreaRegion]:
         # config per doc
         strides = [4, 8, 16, 32, 64, 128]
         use_sigmoid = True
@@ -312,7 +324,7 @@ class TinaFaceClient(Detector):
                 continue
             # pick the largest channel tensor as bbox, smallest as cls if ambiguous
             bbox = max(bbox_list, key=lambda a: a.shape[0])  # (C, H, W)
-            cls = min(cls_list, key=lambda a: a.shape[0])    # (C, H, W)
+            cls = min(cls_list, key=lambda a: a.shape[0])  # (C, H, W)
 
             Cc, H, W = cls.shape
             num_anchors = scales_per_octave  # ratios=1 only
@@ -441,14 +453,18 @@ class TinaFaceClient(Detector):
         # Preferred 'out' parsed if available
         if "out" in outputs_map:
             out = np.squeeze(outputs_map["out"])  # Nx(>=5)
-            resp = self._parse_out_rows(out, score_threshold, width, height, meta["scale"])
+            resp = self._parse_out_rows(
+                out, score_threshold, width, height, meta["scale"]
+            )
             if len(resp) > 0:
                 return self._populate_missing_eyes(img, resp)
         # Fall back: search for any 2D array with >=5 cols
         for _, arr in outputs_map.items():
             out = np.squeeze(arr)
             if isinstance(out, np.ndarray) and out.ndim == 2 and out.shape[1] >= 5:
-                resp = self._parse_out_rows(out, score_threshold, width, height, meta["scale"])
+                resp = self._parse_out_rows(
+                    out, score_threshold, width, height, meta["scale"]
+                )
                 if len(resp) > 0:
                     return self._populate_missing_eyes(img, resp)
 
@@ -473,11 +489,11 @@ class TinaFaceClient(Detector):
     ) -> List[FacialAreaRegion]:
         """
         Populate missing eye landmarks for detected faces.
-        
+
         Args:
             img: Input image array
             faces: List of detected faces with potentially missing eye coordinates
-            
+
         Returns:
             List of faces with eye landmarks populated (either from model output,
             OpenCV cascade detection, or heuristic positioning)
@@ -491,7 +507,7 @@ class TinaFaceClient(Detector):
                 w = max(0, min(img.shape[1] - x, w))
                 h = max(0, min(img.shape[0] - y, h))
                 if w > 0 and h > 0:
-                    roi = img[int(y): int(y + h), int(x): int(x + w)]
+                    roi = img[int(y) : int(y + h), int(x) : int(x + w)]
                     le, re = self._eye_finder.find_eyes(roi)
                     if le is not None:
                         fa.left_eye = (int(x + le[0]), int(y + le[1]))
@@ -506,4 +522,3 @@ class TinaFaceClient(Detector):
                     fa.right_eye = fa.right_eye or (re_x, eye_y)
             updated.append(fa)
         return updated
-        
