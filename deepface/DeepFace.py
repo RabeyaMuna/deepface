@@ -1,8 +1,8 @@
 # common dependencies
+import logging
 import os
 import warnings
-import logging
-from typing import Any, Dict, IO, List, Union, Optional, Sequence
+from typing import IO, Any, Dict, List, Optional, Sequence, Union
 
 # this has to be set before importing tensorflow
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
@@ -15,19 +15,18 @@ import pandas as pd
 import tensorflow as tf
 
 # package dependencies
-from deepface.commons import package_utils, folder_utils
+from deepface.commons import folder_utils, package_utils
 from deepface.commons.logger import Logger
 from deepface.modules import (
-    modeling,
-    representation,
-    verification,
-    recognition,
     demography,
     detection,
-    streaming,
+    modeling,
     preprocessing,
+    recognition,
+    representation,
+    streaming,
+    verification,
 )
-from deepface import __version__
 
 logger = Logger()
 
@@ -152,25 +151,36 @@ def verify(
 
         - 'time' (float): Time taken for the verification process in seconds.
     """
-
-    return verification.verify(
-        img1_path=img1_path,
-        img2_path=img2_path,
-        model_name=model_name,
-        detector_backend=detector_backend,
-        distance_metric=distance_metric,
-        enforce_detection=enforce_detection,
-        align=align,
-        expand_percentage=expand_percentage,
-        normalization=normalization,
-        silent=silent,
-        threshold=threshold,
-        anti_spoofing=anti_spoofing,
-    )
+    try:
+        return verification.verify(
+            img1_path=img1_path,
+            img2_path=img2_path,
+            model_name=model_name,
+            detector_backend=detector_backend,
+            distance_metric=distance_metric,
+            enforce_detection=enforce_detection,
+            align=align,
+            expand_percentage=expand_percentage,
+            normalization=normalization,
+            silent=silent,
+            threshold=threshold,
+            anti_spoofing=anti_spoofing,
+        )
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTPError in verify(): %s", e)
+        return {"verified": False, "error": "HTTPError", "reason": str(e)}
+    except ValueError as e:
+        logger.error("ValueError in verify(): %s", e)
+        return {"verified": False, "error": "ValueError", "reason": str(e)}
+    except Exception as e:
+        logger.error("Unexpected error in verify(): %s", e)
+        return {"verified": False, "error": "Exception", "reason": str(e)}
 
 
 def analyze(
-    img_path: Union[str, np.ndarray, IO[bytes], List[str], List[np.ndarray], List[IO[bytes]]],
+    img_path: Union[
+        str, np.ndarray, IO[bytes], List[str], List[np.ndarray], List[IO[bytes]]
+    ],
     actions: Union[tuple, list] = ("emotion", "age", "gender", "race"),
     enforce_detection: bool = True,
     detector_backend: str = "opencv",
@@ -260,16 +270,26 @@ def analyze(
             - 'middle eastern': Confidence score for Middle Eastern ethnicity.
             - 'white': Confidence score for White ethnicity.
     """
-    return demography.analyze(
-        img_path=img_path,
-        actions=actions,
-        enforce_detection=enforce_detection,
-        detector_backend=detector_backend,
-        align=align,
-        expand_percentage=expand_percentage,
-        silent=silent,
-        anti_spoofing=anti_spoofing,
-    )
+    try:
+        return demography.analyze(
+            img_path=img_path,
+            actions=actions,
+            enforce_detection=enforce_detection,
+            detector_backend=detector_backend,
+            align=align,
+            expand_percentage=expand_percentage,
+            silent=silent,
+            anti_spoofing=anti_spoofing,
+        )
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTPError in analyze(): %s", e)
+        return {"error": "HTTPError", "reason": str(e)}
+    except ValueError as e:
+        logger.error("ValueError in analyze(): %s", e)
+        return {"error": "ValueError", "reason": str(e)}
+    except Exception as e:
+        logger.error("Unexpected error in analyze(): %s", e)
+        return {"error": "Exception", "reason": str(e)}
 
 
 def find(
@@ -384,7 +404,9 @@ def find(
 
 
 def represent(
-    img_path: Union[str, np.ndarray, IO[bytes], Sequence[Union[str, np.ndarray, IO[bytes]]]],
+    img_path: Union[
+        str, np.ndarray, IO[bytes], Sequence[Union[str, np.ndarray, IO[bytes]]]
+    ],
     model_name: str = "VGG-Face",
     enforce_detection: bool = True,
     detector_backend: str = "opencv",
@@ -447,17 +469,27 @@ def represent(
         - face_confidence (float): Confidence score of face detection. If `detector_backend` is set
             to 'skip', the confidence will be 0 and is nonsensical.
     """
-    return representation.represent(
-        img_path=img_path,
-        model_name=model_name,
-        enforce_detection=enforce_detection,
-        detector_backend=detector_backend,
-        align=align,
-        expand_percentage=expand_percentage,
-        normalization=normalization,
-        anti_spoofing=anti_spoofing,
-        max_faces=max_faces,
-    )
+    try:
+        return representation.represent(
+            img_path=img_path,
+            model_name=model_name,
+            enforce_detection=enforce_detection,
+            detector_backend=detector_backend,
+            align=align,
+            expand_percentage=expand_percentage,
+            normalization=normalization,
+            anti_spoofing=anti_spoofing,
+            max_faces=max_faces,
+        )
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTPError in represent(): %s", e)
+        return {"error": "HTTPError", "reason": str(e)}
+    except ValueError as e:
+        logger.error("ValueError in represent(): %s", e)
+        return {"error": "ValueError", "reason": str(e)}
+    except Exception as e:
+        logger.error("Unexpected error in represent(): %s", e)
+        return {"error": "Exception", "reason": str(e)}
 
 
 def stream(
@@ -644,15 +676,28 @@ def detectFace(
         img (np.ndarray): detected (and aligned) facial area image as numpy array
     """
     logger.warn("Function detectFace is deprecated. Use extract_faces instead.")
-    face_objs = extract_faces(
-        img_path=img_path,
-        detector_backend=detector_backend,
-        grayscale=False,
-        enforce_detection=enforce_detection,
-        align=align,
-    )
+    try:
+        face_objs = extract_faces(
+            img_path=img_path,
+            detector_backend=detector_backend,
+            grayscale=False,
+            enforce_detection=enforce_detection,
+            align=align,
+        )
+    except requests.exceptions.HTTPError as e:
+        logger.error("HTTPError in detectFace(): %s", e)
+        return None
+    except ValueError as e:
+        logger.error("ValueError in detectFace(): %s", e)
+        return None
+    except Exception as e:
+        logger.error("Unexpected error in detectFace(): %s", e)
+        return None
+
     extracted_face = None
-    if len(face_objs) > 0:
+    if face_objs and len(face_objs) > 0:
         extracted_face = face_objs[0]["face"]
-        extracted_face = preprocessing.resize_image(img=extracted_face, target_size=target_size)
+        extracted_face = preprocessing.resize_image(
+            img=extracted_face, target_size=target_size
+        )
     return extracted_face

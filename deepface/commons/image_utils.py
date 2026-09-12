@@ -1,18 +1,18 @@
 # built-in dependencies
-import os
-import io
-from typing import Generator, IO, List, Union, Tuple
-import hashlib
 import base64
+import hashlib
+import io
+import os
 from pathlib import Path
+from typing import IO, Generator, List, Tuple, Union
+
+import cv2
+import numpy as np
 
 # 3rd party dependencies
 import requests
-import numpy as np
-import cv2
 from PIL import Image
 from werkzeug.datastructures import FileStorage
-
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 PIL_EXTS = {"jpeg", "png"}
@@ -91,13 +91,15 @@ def load_image(img: Union[str, np.ndarray, IO[bytes]]) -> Tuple[np.ndarray, str]
     if isinstance(img, np.ndarray):
         return img, "numpy array"
 
+    # Special-case werkzeug FileStorage objects (multipart/form-data uploads)
+    if isinstance(img, FileStorage):
+        return load_image_from_file_storage(img)
+
     # The image is an object that supports `.read`
-    if hasattr(img, 'read') and callable(img.read):
+    if hasattr(img, "read") and callable(img.read):
         if isinstance(img, io.StringIO):
-            raise ValueError(
-                'img requires bytes and cannot be an io.StringIO object.'
-            )
-        return load_image_from_io_object(img), 'io object'
+            raise ValueError("img requires bytes and cannot be an io.StringIO object.")
+        return load_image_from_io_object(img), "io object"
 
     if isinstance(img, Path):
         img = str(img)
@@ -207,8 +209,12 @@ def load_image_from_web(url: str) -> np.ndarray:
     Returns:
         img (np.ndarray): equivalent to pre-loaded image from opencv (BGR format)
     """
-    response = requests.get(url, stream=True, timeout=60)
-    response.raise_for_status()
+    try:
+        response = requests.get(url, stream=True, timeout=60)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise ValueError(f"Failed to fetch image from {url}: {e}") from e
+
     image_array = np.asarray(bytearray(response.raw.read()), dtype=np.uint8)
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
     return img

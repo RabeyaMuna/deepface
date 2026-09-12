@@ -1,18 +1,18 @@
 # built-in dependencies
-import time
-from typing import Any, Dict, Optional, Union, List, Tuple
 import math
+import time
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # 3rd party dependencies
 import numpy as np
 
-# project dependencies
-from deepface.modules import representation, detection, modeling
-from deepface.models.FacialRecognition import FacialRecognition
 from deepface.commons.logger import Logger
 from deepface.config.confidence import confidences
 from deepface.config.threshold import thresholds
+from deepface.models.FacialRecognition import FacialRecognition
 
+# project dependencies
+from deepface.modules import detection, modeling, representation
 
 logger = Logger()
 
@@ -150,7 +150,6 @@ def verify(
         if isinstance(img_path, list):
             # given image is already pre-calculated embedding
             if not all(isinstance(dim, (float, int)) for dim in img_path):
-
                 raise ValueError(
                     f"When passing img{index}_path as a list,"
                     " ensure that all its items are of type float."
@@ -184,11 +183,18 @@ def verify(
                     anti_spoofing=anti_spoofing,
                 )
             except ValueError as err:
-                raise ValueError(f"Exception while processing img{index}_path") from err
+                # Preserve the original error context while adding which image failed
+                raise ValueError(
+                    f"Exception while processing img{index}_path: {err}"
+                ) from err
         return img_embeddings, img_facial_areas
 
-    img1_embeddings, img1_facial_areas = extract_embeddings_and_facial_areas(img1_path, 1)
-    img2_embeddings, img2_facial_areas = extract_embeddings_and_facial_areas(img2_path, 2)
+    img1_embeddings, img1_facial_areas = extract_embeddings_and_facial_areas(
+        img1_path, 1
+    )
+    img2_embeddings, img2_facial_areas = extract_embeddings_and_facial_areas(
+        img2_path, 2
+    )
 
     min_distance, min_idx, min_idy = float("inf"), None, None
     for idx, img1_embedding in enumerate(img1_embeddings):
@@ -248,22 +254,45 @@ def __extract_faces_and_embeddings(
     embeddings = []
     facial_areas = []
 
-    img_objs = detection.extract_faces(
-        img_path=img_path,
-        detector_backend=detector_backend,
-        grayscale=False,
-        enforce_detection=enforce_detection,
-        align=align,
-        expand_percentage=expand_percentage,
-        anti_spoofing=anti_spoofing,
-    )
+    try:
+        img_objs = detection.extract_faces(
+            img_path=img_path,
+            detector_backend=detector_backend,
+            grayscale=False,
+            enforce_detection=enforce_detection,
+            align=align,
+            expand_percentage=expand_percentage,
+            anti_spoofing=anti_spoofing,
+        )
+    except Exception as err:
+        # Try to detect network-related errors from requests and provide clearer message.
+        try:
+            from requests.exceptions import RequestException
+        except Exception:
+            RequestException = None
+
+        if RequestException is not None and isinstance(err, RequestException):
+            raise ValueError(
+                f"Network error while fetching image {img_path}: {err}"
+            ) from err
+
+        # If a ValueError was raised (e.g., by enforcement), re-raise it to preserve intent
+        if isinstance(err, ValueError):
+            raise
+
+        # For any other unexpected errors, wrap with a ValueError to provide context
+        raise ValueError(
+            f"Exception while extracting faces from img_path {img_path}: {err}"
+        ) from err
 
     # find embeddings for each face
     for img_obj in img_objs:
         if anti_spoofing is True and img_obj.get("is_real", True) is False:
             raise ValueError("Spoof detected in given image.")
         img_embedding_obj = representation.represent(
-            img_path=img_obj["face"][:, :, ::-1],  # make compatible with direct representation call
+            img_path=img_obj["face"][
+                :, :, ::-1
+            ],  # make compatible with direct representation call
             model_name=model_name,
             enforce_detection=enforce_detection,
             detector_backend="skip",
@@ -279,7 +308,8 @@ def __extract_faces_and_embeddings(
 
 
 def find_cosine_distance(
-    source_representation: Union[np.ndarray, list], test_representation: Union[np.ndarray, list]
+    source_representation: Union[np.ndarray, list],
+    test_representation: Union[np.ndarray, list],
 ) -> Union[np.float64, np.ndarray]:
     """
     Find cosine distance between two given vectors or batches of vectors.
@@ -315,7 +345,8 @@ def find_cosine_distance(
 
 
 def find_angular_distance(
-    source_representation: Union[np.ndarray, list], test_representation: Union[np.ndarray, list]
+    source_representation: Union[np.ndarray, list],
+    test_representation: Union[np.ndarray, list],
 ) -> Union[np.float64, np.ndarray]:
     """
     Find angular distance between two vectors or batches of vectors.
@@ -356,7 +387,8 @@ def find_angular_distance(
 
 
 def find_euclidean_distance(
-    source_representation: Union[np.ndarray, list], test_representation: Union[np.ndarray, list]
+    source_representation: Union[np.ndarray, list],
+    test_representation: Union[np.ndarray, list],
 ) -> Union[np.float64, np.ndarray]:
     """
     Find Euclidean distance between two vectors or batches of vectors.
@@ -429,7 +461,10 @@ def find_distance(
     beta_embedding = np.asarray(beta_embedding)
 
     # Ensure that both embeddings are either 1D or 2D
-    if alpha_embedding.ndim != beta_embedding.ndim or alpha_embedding.ndim not in (1, 2):
+    if alpha_embedding.ndim != beta_embedding.ndim or alpha_embedding.ndim not in (
+        1,
+        2,
+    ):
         raise ValueError(
             f"Both embeddings must be either 1D or 2D, but received "
             f"alpha shape: {alpha_embedding.shape}, beta shape: {beta_embedding.shape}"
@@ -537,9 +572,9 @@ def find_confidence(
         min_target = 0
         max_target = min(49, max_original)
 
-    confidence_distributed = ((confidence - min_original) / (max_original - min_original)) * (
-        max_target - min_target
-    ) + min_target
+    confidence_distributed = (
+        (confidence - min_original) / (max_original - min_original)
+    ) * (max_target - min_target) + min_target
 
     # ensure confidence is within 51-100 for same persons and 0-49 for different persons
     if verified and confidence_distributed < 51:

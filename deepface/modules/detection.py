@@ -1,24 +1,27 @@
 # built-in dependencies
-from typing import Any, Dict, IO, List, Tuple, Union, Optional
 from heapq import nlargest
+from typing import IO, Any, Dict, List, Optional, Tuple, Union
+
+import cv2
 
 # 3rd part dependencies
 import numpy as np
-import cv2
+
+from deepface.commons import image_utils
+from deepface.commons.logger import Logger
+from deepface.models.Detector import DetectedFace, Detector, FacialAreaRegion
 
 # project dependencies
 from deepface.modules import modeling
-from deepface.models.Detector import Detector, DetectedFace, FacialAreaRegion
-from deepface.commons import image_utils
-
-from deepface.commons.logger import Logger
 
 logger = Logger()
 
 # pylint: disable=no-else-raise
 
 
-def is_valid_landmark(coord: Optional[Union[tuple, list]], width: int, height: int) -> bool:
+def is_valid_landmark(
+    coord: Optional[Union[tuple, list]], width: int, height: int
+) -> bool:
     """
     Check if a landmark coordinate is within valid image bounds.
 
@@ -105,7 +108,10 @@ def extract_faces(
     img, img_name = image_utils.load_image(img_path)
 
     if img is None:
-        raise ValueError(f"Exception while loading {img_name}")
+        # image_utils.load_image may fail for remote URLs (e.g., HTTP errors).
+        # Do not raise a generic ValueError here; return an empty list so upstream
+        # code can handle the error appropriately.
+        return []
 
     height, width, _ = img.shape
 
@@ -157,7 +163,9 @@ def extract_faces(
             elif color_face == "gray":
                 current_img = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
             else:
-                raise ValueError(f"The color_face can be rgb, bgr or gray, but it is {color_face}.")
+                raise ValueError(
+                    f"The color_face can be rgb, bgr or gray, but it is {color_face}."
+                )
 
         if normalize_face:
             current_img = current_img / 255  # normalize input in [0, 1]
@@ -206,7 +214,9 @@ def extract_faces(
 
         if anti_spoofing is True:
             antispoof_model = modeling.build_model(task="spoofing", model_name="Fasnet")
-            is_real, antispoof_score = antispoof_model.analyze(img=img, facial_area=(x, y, w, h))
+            is_real, antispoof_score = antispoof_model.analyze(
+                img=img, facial_area=(x, y, w, h)
+            )
             resp_obj["is_real"] = is_real
             resp_obj["antispoof_score"] = antispoof_score
 
@@ -284,7 +294,9 @@ def detect_faces(
 
     if max_faces is not None and max_faces < len(facial_areas):
         facial_areas = nlargest(
-            max_faces, facial_areas, key=lambda facial_area: facial_area.w * facial_area.h
+            max_faces,
+            facial_areas,
+            key=lambda facial_area: facial_area.w * facial_area.h,
         )
 
     return [
@@ -337,7 +349,9 @@ def extract_face(
         # we were aligning the original image before, but this comes with an extra cost
         # instead we now focus on the facial area with a margin
         # and align it instead of original image to decrese the cost
-        sub_img, relative_x, relative_y = extract_sub_image(img=img, facial_area=(x, y, w, h))
+        sub_img, relative_x, relative_y = extract_sub_image(
+            img=img, facial_area=(x, y, w, h)
+        )
 
         aligned_sub_img, angle = align_img_wrt_eyes(
             img=sub_img, left_eye=left_eye, right_eye=right_eye
@@ -373,7 +387,10 @@ def extract_face(
         if mouth_left is not None:
             mouth_left = (mouth_left[0] - width_border, mouth_left[1] - height_border)
         if mouth_right is not None:
-            mouth_right = (mouth_right[0] - width_border, mouth_right[1] - height_border)
+            mouth_right = (
+                mouth_right[0] - width_border,
+                mouth_right[1] - height_border,
+            )
 
     return DetectedFace(
         img=detected_face,
@@ -439,7 +456,8 @@ def extract_sub_image(
     start_x = max(0, relative_x - x)
     start_y = max(0, relative_y - y)
     extracted_face[
-        start_y : start_y + cropped_region.shape[0], start_x : start_x + cropped_region.shape[1]
+        start_y : start_y + cropped_region.shape[0],
+        start_x : start_x + cropped_region.shape[1],
     ] = cropped_region
 
     return extracted_face, relative_x, relative_y
@@ -467,13 +485,20 @@ def align_img_wrt_eyes(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return img, 0
 
-    angle = float(np.degrees(np.arctan2(left_eye[1] - right_eye[1], left_eye[0] - right_eye[0])))
+    angle = float(
+        np.degrees(np.arctan2(left_eye[1] - right_eye[1], left_eye[0] - right_eye[0]))
+    )
 
     (h, w) = img.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
     img = cv2.warpAffine(
-        img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0)
+        img,
+        M,
+        (w, h),
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(0, 0, 0),
     )
 
     return img, angle
