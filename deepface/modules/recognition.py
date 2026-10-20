@@ -250,15 +250,21 @@ def find(
     # now, we got representations for facial database
 
     # img path might have more than once face
-    source_objs = detection.extract_faces(
-        img_path=img_path,
-        detector_backend=detector_backend,
-        grayscale=False,
-        enforce_detection=enforce_detection,
-        align=align,
-        expand_percentage=expand_percentage,
-        anti_spoofing=anti_spoofing,
-    )
+    try:
+        source_objs = detection.extract_faces(
+            img_path=img_path,
+            detector_backend=detector_backend,
+            grayscale=False,
+            enforce_detection=enforce_detection,
+            align=align,
+            expand_percentage=expand_percentage,
+            anti_spoofing=anti_spoofing,
+        )
+    except ValueError as err:
+        raise ValueError(
+            f"Exception while extracting faces from {img_path} with "
+            f"detector backend {detector_backend}: {str(err)}"
+        ) from err
 
     if batched:
         return find_batched(
@@ -417,6 +423,9 @@ def __find_bulk_embeddings(
 
         except ValueError as err:
             logger.error(f"Exception while extracting faces from {employee}: {str(err)}")
+            img_objs = []
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"Unexpected error while extracting faces from {employee}: {str(err)}")
             img_objs = []
 
         if len(img_objs) == 0:

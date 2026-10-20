@@ -145,6 +145,10 @@ class OpenCvClient(Detector):
         if model_name == "haarcascade":
             face_detector_path = os.path.join(opencv_path, "haarcascade_frontalface_default.xml")
             if not os.path.isfile(face_detector_path):
+                face_detector_path = os.path.join(
+                    cv2.data.haarcascades, "haarcascade_frontalface_default.xml"
+                )
+            if not os.path.isfile(face_detector_path):
                 raise ValueError(
                     "Confirm that opencv is installed on your environment! Expected path ",
                     face_detector_path,
@@ -154,6 +158,10 @@ class OpenCvClient(Detector):
 
         elif model_name == "haarcascade_eye":
             eye_detector_path = os.path.join(opencv_path, "haarcascade_eye.xml")
+            if not os.path.isfile(eye_detector_path):
+                eye_detector_path = os.path.join(
+                    cv2.data.haarcascades, "haarcascade_eye.xml"
+                )
             if not os.path.isfile(eye_detector_path):
                 raise ValueError(
                     "Confirm that opencv is installed on your environment! Expected path ",

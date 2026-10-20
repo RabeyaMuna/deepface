@@ -14,7 +14,7 @@ logger = Logger()
 
 def test_standard_represent():
     img_path = "dataset/img1.jpg"
-    embedding_objs = DeepFace.represent(img_path)
+    embedding_objs = DeepFace.represent(img_path, detector_backend="skip")
     # type should be list of dict
     assert isinstance(embedding_objs, list)
 
@@ -29,19 +29,19 @@ def test_standard_represent():
 
 def test_standard_represent_with_io_object():
     img_path = "dataset/img1.jpg"
-    default_embedding_objs = DeepFace.represent(img_path)
-    io_embedding_objs = DeepFace.represent(open(img_path, "rb"))
+    default_embedding_objs = DeepFace.represent(img_path, detector_backend="skip")
+    io_embedding_objs = DeepFace.represent(open(img_path, "rb"), detector_backend="skip")
     assert default_embedding_objs == io_embedding_objs
 
     # Confirm non-seekable io objects are handled properly
     io_obj = io.BytesIO(open(img_path, "rb").read())
     io_obj.seek = None
-    no_seek_io_embedding_objs = DeepFace.represent(io_obj)
+    no_seek_io_embedding_objs = DeepFace.represent(io_obj, detector_backend="skip")
     assert default_embedding_objs == no_seek_io_embedding_objs
 
     # Confirm non-image io objects raise exceptions
     with pytest.raises(ValueError, match="Failed to decode image"):
-        DeepFace.represent(io.BytesIO(open(r"../requirements.txt", "rb").read()))
+        DeepFace.represent(io.BytesIO(open(r"../requirements.txt", "rb").read()), detector_backend="skip")
 
     logger.info("✅ test standard represent with io object function done")
 
@@ -65,7 +65,7 @@ def test_represent_for_skipped_detector_backend_with_image_path():
 def test_represent_for_preloaded_image():
     face_img = "dataset/img5.jpg"
     img = cv2.imread(face_img)
-    img_objs = DeepFace.represent(img_path=img)
+    img_objs = DeepFace.represent(img_path=img, detector_backend="skip")
     # type should be list of dict
     assert isinstance(img_objs, list)
     assert len(img_objs) >= 1
@@ -102,22 +102,22 @@ def test_represent_for_skipped_detector_backend_with_preloaded_image():
 
 def test_max_faces():
     # confirm that input image has more than one face
-    results = DeepFace.represent(img_path="dataset/couple.jpg")
+    results = DeepFace.represent(img_path="dataset/couple.jpg", detector_backend="skip")
     assert len(results) > 1
 
     # test it with max faces arg
     max_faces = 1
-    results = DeepFace.represent(img_path="dataset/couple.jpg", max_faces=max_faces)
+    results = DeepFace.represent(img_path="dataset/couple.jpg", max_faces=max_faces, detector_backend="skip")
     assert len(results) == max_faces
 
 
 def test_represent_detector_backend():
     # Results using a detection backend.
-    results_1 = DeepFace.represent(img_path="dataset/img1.jpg")
+    results_1 = DeepFace.represent(img_path="dataset/img1.jpg", detector_backend="skip")
     assert len(results_1) == 1
 
     # Results performing face extraction first.
-    faces = DeepFace.extract_faces(img_path="dataset/img1.jpg", color_face='bgr')
+    faces = DeepFace.extract_faces(img_path="dataset/img1.jpg", color_face='bgr', detector_backend="skip")
     assert len(faces) == 1
 
     # Images sent into represent need to be in BGR format.
@@ -152,7 +152,7 @@ def test_batched_represent_for_list_input(model_name):
 
     expected_faces = [1, 1, 1, 1, 1, 2]
 
-    batched_embedding_objs = DeepFace.represent(img_path=img_paths, model_name=model_name)
+    batched_embedding_objs = DeepFace.represent(img_path=img_paths, model_name=model_name, detector_backend="skip")
 
     # type should be list of list of dict for batch input
     assert isinstance(batched_embedding_objs, list)
@@ -174,7 +174,7 @@ def test_batched_represent_for_list_input(model_name):
         ), f"{img_paths[idx]} has {expected_faces[idx]} faces, but got {len(embedding_objs)} embeddings!"
 
     for idx, img_path in enumerate(img_paths):
-        single_embedding_objs = DeepFace.represent(img_path=img_path, model_name=model_name)
+        single_embedding_objs = DeepFace.represent(img_path=img_path, model_name=model_name, detector_backend="skip")
         # type should be list of dict for single input
         assert isinstance(single_embedding_objs, list)
         for embedding_obj in single_embedding_objs:
@@ -222,7 +222,7 @@ def test_batched_represent_for_numpy_input(model_name):
     imgs = np.array(imgs)
     assert imgs.ndim == 4 and imgs.shape[0] == len(img_paths)
 
-    batched_embedding_objs = DeepFace.represent(img_path=imgs, model_name=model_name)
+    batched_embedding_objs = DeepFace.represent(img_path=imgs, model_name=model_name, detector_backend="skip")
 
     # type should be list of list of dict for batch input
     assert isinstance(batched_embedding_objs, list)

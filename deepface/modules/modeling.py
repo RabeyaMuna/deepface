@@ -100,7 +100,14 @@ def build_model(task: str, model_name: str) -> Any:
     if cached_models[task].get(model_name) is None:
         model = models[task].get(model_name)
         if model:
-            cached_models[task][model_name] = model()
+            try:
+                cached_models[task][model_name] = model()
+            except ValueError as err:
+                raise ValueError(
+                    f"Failed to build model {task}/{model_name}: {err}. "
+                    "Ensure required model weights/cascade files are available "
+                    "(e.g. haarcascade_frontalface_default.xml for the opencv detector)."
+                ) from err
         else:
             raise ValueError(f"Invalid model_name passed - {task}/{model_name}")
 

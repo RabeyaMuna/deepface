@@ -143,15 +143,30 @@ def analyze(
     # ---------------------------------
     resp_objects = []
 
-    img_objs = detection.extract_faces(
-        img_path=img_path,
-        detector_backend=detector_backend,
-        enforce_detection=enforce_detection,
-        grayscale=False,
-        align=align,
-        expand_percentage=expand_percentage,
-        anti_spoofing=anti_spoofing,
-    )
+    try:
+        img_objs = detection.extract_faces(
+            img_path=img_path,
+            detector_backend=detector_backend,
+            enforce_detection=enforce_detection,
+            grayscale=False,
+            align=align,
+            expand_percentage=expand_percentage,
+            anti_spoofing=anti_spoofing,
+        )
+    except ValueError as err:
+        # The OpenCV backend requires the haarcascade_frontalface_default.xml data file.
+        # If it is missing (e.g. opencv-python-headless without data files), surface a
+        # clearer error message instead of propagating the raw cascade ValueError.
+        if detector_backend == "opencv" and "haarcascade" in str(err).lower():
+            raise ValueError(
+                "OpenCV face detector could not be initialized because the "
+                "haarcascade_frontalface_default.xml data file is missing. "
+                "Install opencv-python (with data files) or use a different "
+                "detector_backend such as 'retinaface', 'mtcnn', 'ssd', 'dlib', "
+                "'mediapipe', 'yolov8', 'yolov11n', 'yolov11s', 'yolov11m', "
+                "'centerface' or 'skip'."
+            ) from err
+        raise
 
     for img_obj in img_objs:
         if anti_spoofing is True and img_obj.get("is_real", True) is False:

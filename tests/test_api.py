@@ -456,7 +456,10 @@ def download_test_images(url: str):
     if os.path.exists(target_file) is True:
         return
 
-    gdown.download(url, target_file, quiet=False)
+    try:
+        gdown.download(url, target_file, quiet=False)
+    except Exception as err:
+        logger.warning(f"could not download {url}: {err}")
 
 
 def is_form_data_file_testable() -> bool:

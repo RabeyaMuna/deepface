@@ -184,7 +184,9 @@ def verify(
                     anti_spoofing=anti_spoofing,
                 )
             except ValueError as err:
-                raise ValueError(f"Exception while processing img{index}_path") from err
+                raise ValueError(
+                    f"Exception while processing img{index}_path: {err}"
+                ) from err
         return img_embeddings, img_facial_areas
 
     img1_embeddings, img1_facial_areas = extract_embeddings_and_facial_areas(img1_path, 1)

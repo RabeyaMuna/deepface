@@ -156,6 +156,11 @@ def represent(
             batch_confidences.append(confidence)
             batch_indexes.append(idx)
 
+    # Handle case where no faces were detected across all images
+    if len(batch_images) == 0:
+        resp_objs = [[] for _ in range(len(images))]
+        return resp_objs[0] if len(images) == 1 else resp_objs
+
     # Convert list of images to a numpy array for batch processing
     batch_images = np.concatenate(batch_images, axis=0)
 
@@ -166,7 +171,7 @@ def represent(
     for idy, batch_index in enumerate(batch_indexes):
         resp_objs_dict[batch_index].append(
             {
-                "embedding": embeddings if len(batch_images) == 1 else embeddings[idy],
+                "embedding": embeddings[idy],
                 "facial_area": batch_regions[idy],
                 "face_confidence": batch_confidences[idy],
             }

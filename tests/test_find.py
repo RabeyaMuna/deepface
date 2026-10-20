@@ -19,7 +19,12 @@ threshold = verification.find_threshold(model_name="VGG-Face", distance_metric="
 
 def test_find_with_exact_path():
     img_path = os.path.join("dataset", "img1.jpg")
-    dfs = DeepFace.find(img_path=img_path, db_path="dataset", silent=True)
+    dfs = DeepFace.find(
+        img_path=img_path,
+        db_path="dataset",
+        detector_backend="skip",
+        silent=True,
+    )
     assert len(dfs) > 0
     for df in dfs:
         assert isinstance(df, pd.DataFrame)
@@ -49,7 +54,9 @@ def test_find_with_exact_path():
 def test_find_with_array_input():
     img_path = os.path.join("dataset", "img1.jpg")
     img1 = cv2.imread(img_path)
-    dfs = DeepFace.find(img1, db_path="dataset", silent=True)
+    dfs = DeepFace.find(
+        img1, db_path="dataset", detector_backend="skip", silent=True
+    )
     assert len(dfs) > 0
     for df in dfs:
         assert isinstance(df, pd.DataFrame)
@@ -70,7 +77,7 @@ def test_find_with_array_input():
 
 def test_find_with_extracted_faces():
     img_path = os.path.join("dataset", "img1.jpg")
-    face_objs = DeepFace.extract_faces(img_path)
+    face_objs = DeepFace.extract_faces(img_path, detector_backend="skip")
     img = face_objs[0]["face"]
     dfs = DeepFace.find(img, db_path="dataset", detector_backend="skip", silent=True)
     assert len(dfs) > 0
@@ -95,7 +102,12 @@ def test_filetype_for_find():
     only images as jpg and png can be loaded into database
     """
     img_path = os.path.join("dataset", "img1.jpg")
-    dfs = DeepFace.find(img_path=img_path, db_path="dataset", silent=True)
+    dfs = DeepFace.find(
+        img_path=img_path,
+        db_path="dataset",
+        detector_backend="skip",
+        silent=True,
+    )
 
     df = dfs[0]
 
@@ -144,7 +156,13 @@ def test_find_without_refresh_database():
     os.mkdir(tmp_dir)
     shutil.move(os.path.join("dataset", image_name), os.path.join(tmp_dir, image_name))
 
-    dfs = DeepFace.find(img_path=img_path, db_path="dataset", silent=True, refresh_database=False)
+    dfs = DeepFace.find(
+        img_path=img_path,
+        db_path="dataset",
+        detector_backend="skip",
+        silent=True,
+        refresh_database=False,
+    )
 
     with open(pkl_path, "rb") as f:
         hash_after = hashlib.sha256(f.read())

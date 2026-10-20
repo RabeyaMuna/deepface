@@ -107,6 +107,11 @@ def extract_faces(
     if img is None:
         raise ValueError(f"Exception while loading {img_name}")
 
+    if img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.ndim == 3 and img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
     height, width, _ = img.shape
 
     base_region = FacialAreaRegion(x=0, y=0, w=width, h=height, confidence=0)

@@ -211,4 +211,6 @@ def load_image_from_web(url: str) -> np.ndarray:
     response.raise_for_status()
     image_array = np.asarray(bytearray(response.raw.read()), dtype=np.uint8)
     img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError(f"Could not decode image from url: {url}")
     return img
