@@ -23,10 +23,10 @@ from deepface.commons.logger import Logger
 logger = Logger()
 
 IMG1_SOURCE = (
-    "https://raw.githubusercontent.com/serengil/deepface/refs/heads/master/tests/dataset/img1.jpg"
+    "dataset/img1.jpg"
 )
 IMG2_SOURCE = (
-    "https://raw.githubusercontent.com/serengil/deepface/refs/heads/master/tests/dataset/img2.jpg"
+    "dataset/img2.jpg"
 )
 DUMMY_APP = Flask(__name__)
 
@@ -454,6 +454,11 @@ def download_test_images(url: str):
     file_name = url.split("/")[-1]
     target_file = f"/tmp/{file_name}"
     if os.path.exists(target_file) is True:
+        return
+
+    # Prefer local fixtures to keep tests deterministic and avoid network flakiness.
+    if os.path.isfile(url):
+        shutil.copyfile(url, target_file)
         return
 
     gdown.download(url, target_file, quiet=False)

@@ -192,7 +192,15 @@ def load_image_from_file_storage(file: FileStorage) -> np.ndarray:
     Returns:
         img (np.ndarray): The decoded image as a numpy array (OpenCV format).
     """
-    file_bytes = np.frombuffer(file.read(), np.uint8)
+    # Flask/Werkzeug multipart parsing may leave file cursor at EOF.
+    # Rewind and decode from the underlying stream for robust handling.
+    stream = file.stream
+    try:
+        stream.seek(0)
+    except (AttributeError, OSError, io.UnsupportedOperation):
+        pass
+
+    file_bytes = np.frombuffer(stream.read(), np.uint8)
     image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError("Failed to decode image")
